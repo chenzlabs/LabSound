@@ -212,11 +212,8 @@ void AudioDestinationMl::stopRecording()
 }
 
 // Pulls on our provider to get rendered audio stream.
-void AudioDestinationMl::render(int numberOfFrames, void * outputBuffer, void * inputBuffer)
+void AudioDestinationMl::render(int numberOfFrames, void *outputBuffer, void *inputBuffer)
 {
-    float *myOutputBufferOfFloats = (float*) outputBuffer;
-    float *myInputBufferOfFloats = (float*) inputBuffer;
-
     // Inform bus to use an externally allocated buffer from rtaudio
     m_renderBus.setChannelMemory(0, myOutputBufferOfFloats, numberOfFrames);
     m_renderBus.setChannelMemory(1, myOutputBufferOfFloats + (numberOfFrames), numberOfFrames);
