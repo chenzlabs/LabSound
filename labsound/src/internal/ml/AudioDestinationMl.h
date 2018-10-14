@@ -10,7 +10,9 @@
 
 #include "internal/AudioDestination.h"
 
+extern "C" {
 #include <libswresample/swresample.h>
+}
 #include <iostream>
 #include <cstdlib>
 #include <ml_audio.h>
