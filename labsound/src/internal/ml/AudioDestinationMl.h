@@ -10,7 +10,6 @@
 
 #include "internal/AudioDestination.h"
 
-#include "rtaudio/RtAudio.h"
 #include <iostream>
 #include <cstdlib>
 #include <ml_audio.h>
