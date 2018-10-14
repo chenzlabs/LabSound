@@ -37,18 +37,30 @@ void outputBufferCallback(MLHandle handle, void *callback_context) {
         std::cerr << "failed to get ml output buffer" << std::endl;
       }
 
-      for (size_t i = 0; i < audioDestination->inputBuffer.size(); i++) {
-        audioDestination->inputBuffer[i] = (float)(((uint16_t *)inputMlBuffer.ptr)[i]) / 32768.0f;
-      }
+      uint8_t *dstData[] = {
+        (uint8_t *)audioDestination->inputBuffer.data(),
+      };
+      int dstDataSize = audioDestination->inputBuffer.size();
+      const uint8_t *srcData[] = {
+        inputMlBuffer.ptr,
+      };
+      int srcDataSize = inputMlBuffer.size / sizeof(uint16_t);
+      swr_convert(audioDestination->input_swr_ctx, dstData, dstDataSize, srcData, srcDataSize);
     } else {
       memset(audioDestination->inputBuffer.data(), 0, sizeof(float) * audioDestination->inputBuffer.size());
     }
 
     audioDestination->render(audioDestination->outputBuffer.size(), audioDestination->outputBuffer.data(), audioDestination->inputBuffer.data());
-
-    for (size_t i = 0; i < audioDestination->outputBuffer.size(); i++) {
-      ((uint16_t *)outputMlBuffer.ptr)[i] = (uint16_t)(audioDestination->outputBuffer[i] * 32768.0f);
-    }
+    
+    uint8_t *dstData[] = {
+      outputMlBuffer.ptr,
+    };
+    int dstDataSize = outputMlBuffer.size / 2 / sizeof(uint16_t);
+    const uint8_t *srcData[] = {
+      (const uint8_t *)audioDestination->outputBuffer.data(),
+    };
+    int srcDataSize = audioDestination->outputBuffer.size() / 2;
+    swr_convert(audioDestination->output_swr_ctx, dstData, dstDataSize, srcData, srcDataSize);
 
     result = MLAudioReleaseOutputStreamBuffer(audioDestination->outputHandle);
     if (result != MLResult_Ok) {
@@ -84,47 +96,108 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
     outputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
     outputAudioBufferFormat.samples_per_second = (uint32_t)sampleRate;
     outputAudioBufferFormat.valid_bits_per_sample = 16;
-
-    nBufferFrames = (uint32_t)sampleRate / 10;
-
-    outputBuffer = std::vector<float>(nBufferFrames);
-    inputBuffer = std::vector<float>(nBufferFrames);
-
-    MLResult result = MLAudioCreateSoundWithOutputStream(
-      &outputAudioBufferFormat,
-      nBufferFrames * sizeof(uint16_t),
-      outputBufferCallback,
-      this,
-      &outputHandle 
-    );
-    if (result != MLResult_Ok) {
-      std::cerr << "failed to create ml output sound: " << result << std::endl;
+    
+    uint32_t nOutputBufferFrames = (uint32_t)sampleRate / 10;
+    outputBuffer = std::vector<float>(nOutputBufferFrames * 2);
+    
+    {
+      MLResult result = MLAudioCreateSoundWithOutputStream(
+        &outputAudioBufferFormat,
+        nOutputBufferFrames * 2 * sizeof(uint16_t),
+        outputBufferCallback,
+        this,
+        &outputHandle
+      );
+      if (result != MLResult_Ok) {
+        std::cerr << "failed to create ml output sound: " << result << std::endl;
+      }
     }
 
     inputAudioBufferFormat.bits_per_sample = 16;
     inputAudioBufferFormat.channel_count = 1;
     inputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
-    inputAudioBufferFormat.samples_per_second = (uint32_t)sampleRate;
+    inputAudioBufferFormat.samples_per_second = 16000;
     inputAudioBufferFormat.valid_bits_per_sample = 16;
-
-    result = MLAudioCreateInputFromVoiceComm(
-      &inputAudioBufferFormat,
-      nBufferFrames * sizeof(uint16_t),
-      inputBufferCallback,
-      nullptr,
-      &inputHandle
-    );
-    if (result != MLResult_Ok) {
-      std::cerr << "failed to create ml microphone input: " << result << std::endl;
+    
+    uint32_t nInputBufferFrames = nOutputBufferFrames * inputAudioBufferFormat.samples_per_second / outputAudioBufferFormat.samples_per_second;
+    inputBuffer = std::vector<float>(nOutputBufferFrames);
+    
+    {
+      MLResult result = MLAudioCreateInputFromVoiceComm(
+        &inputAudioBufferFormat,
+        nInputBufferFrames * sizeof(uint16_t),
+        inputBufferCallback,
+        nullptr,
+        &inputHandle
+      );
+      if (result != MLResult_Ok) {
+        std::cerr << "failed to create ml microphone input: " << result << std::endl;
+      }
     }
 
     m_sampleRate = sampleRate;
     m_renderBus.setSampleRate(m_sampleRate);
+    m_inputBus.setSampleRate(m_sampleRate);
+    // m_inputBus.setSampleRate((float)inputAudioBufferFormat.samples_per_second);
     // configure();
+
+    {
+      int64_t src_ch_layout = AV_CH_LAYOUT_STEREO, dst_ch_layout = AV_CH_LAYOUT_STEREO;
+      enum AVSampleFormat src_sample_fmt = AV_SAMPLE_FMT_FLT, dst_sample_fmt = AV_SAMPLE_FMT_S16;
+      int src_rate = outputAudioBufferFormat.samples_per_second, dst_rate = outputAudioBufferFormat.samples_per_second;
+      
+      output_swr_ctx = swr_alloc_set_opts(
+        nullptr,
+        dst_ch_layout,
+        dst_sample_fmt,
+        dst_rate,
+        src_ch_layout,
+        src_sample_fmt,
+        src_rate,
+        0,
+        nullptr
+      );
+      if (!output_swr_ctx) {
+        std::cerr << "failed to allocate output resmapler context" << std::endl;
+      }
+
+      /* initialize the resampling context */
+      if (swr_init(output_swr_ctx) < 0) {
+        std::cerr << "failed to initialize output resampler context" << std::endl;
+      }
+    }
+    
+    {
+      int64_t src_ch_layout = AV_CH_LAYOUT_MONO, dst_ch_layout = AV_CH_LAYOUT_MONO;
+      enum AVSampleFormat src_sample_fmt = AV_SAMPLE_FMT_S16, dst_sample_fmt = AV_SAMPLE_FMT_FLT;
+      int src_rate = inputAudioBufferFormat.samples_per_second, dst_rate = outputAudioBufferFormat.samples_per_second;
+      
+      input_swr_ctx = swr_alloc_set_opts(
+        nullptr,
+        dst_ch_layout,
+        dst_sample_fmt,
+        dst_rate,
+        src_ch_layout,
+        src_sample_fmt,
+        src_rate,
+        0,
+        nullptr
+      );
+      if (!input_swr_ctx) {
+        std::cerr << "failed to allocate input resmapler context" << std::endl;
+      }
+
+      /* initialize the resampling context */
+      if (swr_init(input_swr_ctx) < 0) {
+        std::cerr << "failed to initialize input resampler context" << std::endl;
+      }
+    }
 }
 
 AudioDestinationMl::~AudioDestinationMl()
 {
+  swr_free(&output_swr_ctx);
+  swr_free(&input_swr_ctx);
     // dac.release(); // XXX
     /* if (dac.isStreamOpen())
         dac.closeStream(); */
@@ -215,10 +288,10 @@ void AudioDestinationMl::stopRecording()
 void AudioDestinationMl::render(int numberOfFrames, void *outputBuffer, void *inputBuffer)
 {
     // Inform bus to use an externally allocated buffer from rtaudio
-    m_renderBus.setChannelMemory(0, myOutputBufferOfFloats, numberOfFrames);
-    m_renderBus.setChannelMemory(1, myOutputBufferOfFloats + (numberOfFrames), numberOfFrames);
+    m_renderBus.setChannelMemory(0, (float *)outputBuffer, numberOfFrames);
+    m_renderBus.setChannelMemory(1, (float *)outputBuffer + numberOfFrames, numberOfFrames);
 
-    m_inputBus.setChannelMemory(0, myInputBufferOfFloats, numberOfFrames);
+    m_inputBus.setChannelMemory(0, (float *)inputBuffer, numberOfFrames);
 
     // Source Bus :: Destination Bus 
     m_callback.render(&m_inputBus, &m_renderBus, numberOfFrames);

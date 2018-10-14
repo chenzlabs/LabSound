@@ -10,6 +10,7 @@
 
 #include "internal/AudioDestination.h"
 
+#include <libswresample/swresample.h>
 #include <iostream>
 #include <cstdlib>
 #include <ml_audio.h>
@@ -45,6 +46,9 @@ public:
     AudioBus m_renderBus = {2, AudioNode::ProcessingSizeInFrames, false};
     AudioBus m_inputBus = {1, AudioNode::ProcessingSizeInFrames, false};
 
+    struct SwrContext *output_swr_ctx;
+    struct SwrContext *input_swr_ctx;
+    
     float m_sampleRate;
     bool m_isPlaying = false;
     bool m_isRecording = false;
@@ -53,7 +57,6 @@ public:
     MLHandle inputHandle;
     MLAudioBufferFormat outputAudioBufferFormat;
     MLAudioBufferFormat inputAudioBufferFormat;
-    size_t nBufferFrames;
     std::vector<float> outputBuffer;
     std::vector<float> inputBuffer;
 };
