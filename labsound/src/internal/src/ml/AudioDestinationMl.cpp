@@ -98,7 +98,7 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
       &outputHandle 
     );
     if (result != MLResult_Ok) {
-      std::cerr << "failed to create ml output sound" << std::endl;
+      std::cerr << "failed to create ml output sound: " << result << std::endl;
     }
 
     inputAudioBufferFormat.bits_per_sample = 16;
@@ -115,7 +115,7 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
       &inputHandle
     );
     if (result != MLResult_Ok) {
-      std::cerr << "failed to create ml microphone input" << std::endl;
+      std::cerr << "failed to create ml microphone input: " << result << std::endl;
     }
 
     m_sampleRate = sampleRate;
