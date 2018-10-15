@@ -14,6 +14,7 @@ extern "C" {
 #include <libswresample/swresample.h>
 }
 #include <iostream>
+#include <deque>
 #include <cstdlib>
 #include <ml_audio.h>
 // #include <ml_logging.h>
@@ -59,8 +60,13 @@ public:
     MLHandle inputHandle;
     MLAudioBufferFormat outputAudioBufferFormat;
     MLAudioBufferFormat inputAudioBufferFormat;
-    std::vector<float> outputBuffer;
-    std::vector<float> inputBuffer;
+    std::deque<MLAudioBuffer> outputMlBuffers;
+    std::deque<MLAudioBuffer> inputMlBuffers;
+    std::deque<std::vector<float>> inputBuffers;
+    int outputIndex = 0;
+    int inputIndex = 0;
+    // std::vector<float> outputBuffer;
+    // std::vector<float> inputBuffer;
 };
 
 // int outputCallback(void *outputBuffer, void *inputBuffer, unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus status, void *userData ); 
