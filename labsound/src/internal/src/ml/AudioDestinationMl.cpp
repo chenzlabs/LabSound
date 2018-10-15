@@ -329,7 +329,7 @@ void AudioDestinationMl::stop()
 
 void AudioDestinationMl::startRecording()
 {
-    MLResult result = MLAudioStartSound(inputHandle);
+    MLResult result = MLAudioStartInput(inputHandle);
 
     if (result == MLResult_Ok) {
       std::cout << "start recording" << std::endl;
@@ -342,7 +342,7 @@ void AudioDestinationMl::startRecording()
 
 void AudioDestinationMl::stopRecording()
 {
-    MLResult result = MLAudioStopSound(inputHandle);
+    MLResult result = MLAudioStopInput(inputHandle);
 
     if (result == MLResult_Ok) {
       m_isRecording = false;
