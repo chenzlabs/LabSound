@@ -192,7 +192,7 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
         // nInputBufferFramesPerChannel * sizeof(uint16_t),
         0,
         inputBufferCallback,
-        nullptr,
+        this,
         &inputHandle
       );
       if (result != MLResult_Ok) {
