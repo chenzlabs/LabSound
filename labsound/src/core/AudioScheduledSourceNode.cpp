@@ -124,7 +124,11 @@ void AudioScheduledSourceNode::start(double when)
     }
 
     m_startTime = when;
-    m_playbackState = SCHEDULED_STATE;
+    m_endTime = UnknownTime;
+    
+    if (m_playbackState == UNSCHEDULED_STATE) {
+      m_playbackState = SCHEDULED_STATE;
+    }
 }
 
 void AudioScheduledSourceNode::stop(double when)
