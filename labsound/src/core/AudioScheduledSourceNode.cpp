@@ -119,9 +119,6 @@ void AudioScheduledSourceNode::updateSchedulingInfo(ContextRenderLock& r,
 
 void AudioScheduledSourceNode::start(double when)
 {
-    if (m_playbackState != UNSCHEDULED_STATE)
-        return;
-
     if (!std::isfinite(when) || (when < 0)) {
         return;
     }
@@ -132,12 +129,9 @@ void AudioScheduledSourceNode::start(double when)
 
 void AudioScheduledSourceNode::stop(double when)
 {
-    if (!(m_playbackState == SCHEDULED_STATE || m_playbackState == PLAYING_STATE))
-        return;
-    
     if (!std::isfinite(when))
         return;
-    
+
     when = max(0.0, when);
     m_endTime = when;
 }
