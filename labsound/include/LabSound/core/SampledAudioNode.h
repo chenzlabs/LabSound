@@ -37,6 +37,8 @@ public:
     unsigned numberOfChannels(ContextRenderLock & r);
 
     // Play-state
+    void setCurrentTime(double currentTime);
+    
     void startGrain(double when, double grainOffset);
     void startGrain(double when, double grainOffset, double grainDuration);
 

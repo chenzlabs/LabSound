@@ -350,6 +350,10 @@ unsigned SampledAudioNode::numberOfChannels(ContextRenderLock& r)
     return output(0)->numberOfChannels();
 }
 
+void SampledAudioNode::setCurrentTime(double currentTime) {
+    m_virtualReadIndex = AudioUtilities::timeToSampleFrame(currentTime, m_sourceBus->sampleRate());
+}
+
 void SampledAudioNode::startGrain(double when, double grainOffset)
 {
     // Duration of 0 has special value, meaning calculate based on the entire buffer's duration.
