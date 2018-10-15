@@ -312,7 +312,7 @@ void AudioDestinationMl::start()
     if (result == MLResult_Ok) {
       m_isPlaying = true;
     } else {
-      std::cerr << "failed to start ml output sound" << std::endl;
+      std::cerr << "failed to start ml output sound: " << result << std::endl;
     }
 }
 
@@ -323,7 +323,7 @@ void AudioDestinationMl::stop()
     if (result == MLResult_Ok) {
       m_isPlaying = false;
     } else {
-      std::cerr << "failed to stop ml output sound" << std::endl;
+      std::cerr << "failed to stop ml output sound: " << result << std::endl;
     }
 }
 
@@ -332,9 +332,11 @@ void AudioDestinationMl::startRecording()
     MLResult result = MLAudioStartSound(inputHandle);
 
     if (result == MLResult_Ok) {
+      std::cout << "start recording" << std::endl;
+      
       m_isRecording = true;
     } else {
-      std::cerr << "failed to start ml input" << std::endl;
+      std::cerr << "failed to start ml input: " << result << std::endl;
     }
 }
 
@@ -345,7 +347,7 @@ void AudioDestinationMl::stopRecording()
     if (result == MLResult_Ok) {
       m_isRecording = false;
     } else {
-      std::cerr << "failed to stop ml input" << std::endl;
+      std::cerr << "failed to stop ml input: " << result << std::endl;
     }
 }
 
