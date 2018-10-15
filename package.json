@@ -23,6 +23,6 @@
   "homepage": "https://github.com/modulesio/LabSound#readme",
   "dependencies": {
     "nan": "^2.8.0",
-    "native-video-deps": "0.0.18"
+    "native-video-deps": "0.0.30"
   }
 }
