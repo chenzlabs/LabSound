@@ -57,7 +57,7 @@ void AudioScheduledSourceNode::updateSchedulingInfo(ContextRenderLock& r,
     if (m_endTime != UnknownTime && endFrame <= quantumStartFrame)
         finish(r);
 
-    if (m_playbackState == UNSCHEDULED_STATE || m_playbackState == FINISHED_STATE || startFrame >= quantumEndFrame) {
+    if (m_playbackState == UNSCHEDULED_STATE || startFrame >= quantumEndFrame) {
         // Output silence.
         outputBus->zero();
         nonSilentFramesToProcess = 0;
@@ -119,32 +119,30 @@ void AudioScheduledSourceNode::updateSchedulingInfo(ContextRenderLock& r,
 
 void AudioScheduledSourceNode::start(double when)
 {
-    if (m_playbackState != UNSCHEDULED_STATE)
-        return;
-
     if (!std::isfinite(when) || (when < 0)) {
         return;
     }
 
     m_startTime = when;
-    m_playbackState = SCHEDULED_STATE;
+    m_endTime = UnknownTime;
+    
+    if (m_playbackState == UNSCHEDULED_STATE) {
+      m_playbackState = SCHEDULED_STATE;
+    }
 }
 
 void AudioScheduledSourceNode::stop(double when)
 {
-    if (!(m_playbackState == SCHEDULED_STATE || m_playbackState == PLAYING_STATE))
-        return;
-    
     if (!std::isfinite(when))
         return;
-    
+
     when = max(0.0, when);
     m_endTime = when;
 }
 
 void AudioScheduledSourceNode::finish(ContextRenderLock& r)
 {
-    m_playbackState = FINISHED_STATE;
+    m_playbackState = UNSCHEDULED_STATE;
     r.context()->decrementActiveSourceCount();
 }
 
