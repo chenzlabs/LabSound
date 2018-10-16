@@ -140,6 +140,7 @@ void inputBufferCallback(MLHandle handle, void *callback_context) {
 
       audioDestination->inputMlBuffers.push_back(inputMlBuffer);
       audioDestination->inputBuffers.push_back(std::move(inputBuffer));
+      audioDestination->m_isRecording = true;
 
       processBuffers(audioDestination);
     } else {
@@ -338,7 +339,7 @@ void AudioDestinationMl::startRecording()
     if (result == MLResult_Ok) {
       std::cout << "start recording" << std::endl;
 
-      m_isRecording = true;
+      // m_isRecording = true; // only consider recording started on the first buffer emit
     } else {
       std::cerr << "failed to start ml input: " << result << std::endl;
     }
