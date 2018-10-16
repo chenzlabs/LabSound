@@ -29,6 +29,7 @@ void processBuffers(AudioDestinationMl *audioDestination) {
           std::vector<float> &inputBuffer = audioDestination->inputBuffers.front();
           int totalInputFrames = inputBuffer.size();
           int remainingInputFrames = totalInputFrames - audioDestination->inputIndex;
+
           currentFrames = std::min<int>(currentFrames, remainingInputFrames);
         } else {
           break;
@@ -151,17 +152,12 @@ unsigned long AudioDestination::maxChannelCount()
 
 AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleRate) : m_callback(callback)
 {
-    outputAudioBufferFormat.bits_per_sample = 16;
-    outputAudioBufferFormat.channel_count = 2;
-    outputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
-    outputAudioBufferFormat.samples_per_second = (uint32_t)sampleRate;
-    outputAudioBufferFormat.valid_bits_per_sample = 16;
-
-    // uint32_t nOutputBufferFramesPerChannel = AudioNode::ProcessingSizeInFrames;
-    // outputBuffer = std::vector<float>(nOutputBufferFramesPerChannel * 2);
-
     {
-      // std::cout << "ML init output buffer size " << nOutputBufferFramesPerChannel << " " << (nOutputBufferFramesPerChannel * 2 * sizeof(uint16_t)) << std::endl;
+      outputAudioBufferFormat.bits_per_sample = 16;
+      outputAudioBufferFormat.channel_count = 2;
+      outputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
+      outputAudioBufferFormat.samples_per_second = (uint32_t)sampleRate;
+      outputAudioBufferFormat.valid_bits_per_sample = 16;
 
       uint32_t outputBufferSize = mlBufferSize*2*sizeof(int16_t);
       
@@ -178,17 +174,13 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
       }
     }
 
-    inputAudioBufferFormat.bits_per_sample = 16;
-    inputAudioBufferFormat.channel_count = 1;
-    inputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
-    inputAudioBufferFormat.samples_per_second = 16000;
-    inputAudioBufferFormat.valid_bits_per_sample = 16;
-
-    // uint32_t nInputBufferFramesPerChannel = av_rescale_rnd(nOutputBufferFramesPerChannel, inputAudioBufferFormat.samples_per_second, outputAudioBufferFormat.samples_per_second, AV_ROUND_UP);
-    // inputBuffer = std::vector<float>(nOutputBufferFramesPerChannel);
-
     {
-      // std::cout << "ML init input buffer size " << nInputBufferFramesPerChannel << " " << (nInputBufferFramesPerChannel * sizeof(uint16_t)) << std::endl;
+      inputAudioBufferFormat.bits_per_sample = 16;
+      inputAudioBufferFormat.channel_count = 1;
+      inputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
+      inputAudioBufferFormat.samples_per_second = 16000;
+      inputAudioBufferFormat.valid_bits_per_sample = 16;
+
       uint32_t inputBufferSize = (uint32_t)av_rescale_rnd(mlBufferSize*sizeof(int16_t), inputAudioBufferFormat.samples_per_second, outputAudioBufferFormat.samples_per_second, AV_ROUND_UP);
       inputBufferSize += (sizeof(int16_t) - (inputBufferSize % sizeof(int16_t)));
 
