@@ -96,47 +96,55 @@ void processBuffers(AudioDestinationMl *audioDestination) {
 void outputBufferCallback(MLHandle handle, void *callback_context) {
   AudioDestinationMl *audioDestination = (AudioDestinationMl *)callback_context;
 
-  MLAudioBuffer outputMlBuffer;
-  MLResult result = MLAudioGetOutputStreamBuffer(
-    audioDestination->outputHandle,
-    &outputMlBuffer
-  );
-  if (result == MLResult_Ok) {
-    audioDestination->outputMlBuffers.push_back(std::move(outputMlBuffer));
+  {
+    std::lock_guard<std::mutex> lock(audioDestination->mutex);
 
-    processBuffers(audioDestination);
-  } else {
-    std::cerr << "failed to get ml output buffer" << std::endl;
+    MLAudioBuffer outputMlBuffer;
+    MLResult result = MLAudioGetOutputStreamBuffer(
+      audioDestination->outputHandle,
+      &outputMlBuffer
+    );
+    if (result == MLResult_Ok) {
+      audioDestination->outputMlBuffers.push_back(outputMlBuffer);
+
+      processBuffers(audioDestination);
+    } else {
+      std::cerr << "failed to get ml output buffer" << std::endl;
+    }
   }
 }
 
 void inputBufferCallback(MLHandle handle, void *callback_context) {
   AudioDestinationMl *audioDestination = (AudioDestinationMl *)callback_context;
 
-  MLAudioBuffer inputMlBuffer;
-  MLResult result = MLAudioGetInputStreamBuffer(
-    audioDestination->inputHandle,
-    &inputMlBuffer
-  );
-  if (result == MLResult_Ok) {
-    int numRawFrames = inputMlBuffer.size / sizeof(int16_t);
-    int numConvertedFrames = av_rescale_rnd(numRawFrames, audioDestination->outputAudioBufferFormat.samples_per_second, audioDestination->inputAudioBufferFormat.samples_per_second, AV_ROUND_UP);
-    std::vector<float> inputBuffer(numConvertedFrames);
+  {
+    std::lock_guard<std::mutex> lock(audioDestination->mutex);
 
-    uint8_t *dstData[] = {
-      (uint8_t *)inputBuffer.data(),
-    };
-    const uint8_t *srcData[] = {
-      (const uint8_t *)inputMlBuffer.ptr,
-    };
-    swr_convert(audioDestination->input_swr_ctx, dstData, numConvertedFrames, srcData, numRawFrames);
+    MLAudioBuffer inputMlBuffer;
+    MLResult result = MLAudioGetInputStreamBuffer(
+      audioDestination->inputHandle,
+      &inputMlBuffer
+    );
+    if (result == MLResult_Ok) {
+      int numRawFrames = inputMlBuffer.size / sizeof(int16_t);
+      int numConvertedFrames = mlBufferSize;
+      std::vector<float> inputBuffer(numConvertedFrames);
 
-    audioDestination->inputMlBuffers.push_back(std::move(inputMlBuffer));
-    audioDestination->inputBuffers.push_back(std::move(inputBuffer));
+      uint8_t *dstData[] = {
+        (uint8_t *)inputBuffer.data(),
+      };
+      const uint8_t *srcData[] = {
+        (const uint8_t *)inputMlBuffer.ptr,
+      };
+      swr_convert(audioDestination->input_swr_ctx, dstData, numConvertedFrames, srcData, numRawFrames);
 
-    processBuffers(audioDestination);
-  } else {
-    std::cerr << "failed to get ml input buffer" << std::endl;
+      audioDestination->inputMlBuffers.push_back(inputMlBuffer);
+      audioDestination->inputBuffers.push_back(std::move(inputBuffer));
+
+      processBuffers(audioDestination);
+    } else {
+      std::cerr << "failed to get ml input buffer" << std::endl;
+    }
   }
 }
 
