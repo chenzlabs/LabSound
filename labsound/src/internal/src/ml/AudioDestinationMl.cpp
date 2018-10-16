@@ -109,7 +109,7 @@ void outputBufferCallback(MLHandle handle, void *callback_context) {
 
       processBuffers(audioDestination);
     } else {
-      std::cerr << "failed to get ml output buffer" << std::endl;
+      std::cerr << "failed to get ml output buffer: " << result << std::endl;
     }
   }
 }
@@ -143,7 +143,7 @@ void inputBufferCallback(MLHandle handle, void *callback_context) {
 
       processBuffers(audioDestination);
     } else {
-      std::cerr << "failed to get ml input buffer" << std::endl;
+      std::cerr << "failed to get ml input buffer: " << result << std::endl;
     }
   }
 }
