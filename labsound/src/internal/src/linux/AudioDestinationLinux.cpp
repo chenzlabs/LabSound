@@ -36,9 +36,9 @@ AudioDestinationLinux::AudioDestinationLinux(AudioIOCallback & callback, float s
 
 AudioDestinationLinux::~AudioDestinationLinux()
 {
-    dac.release(); // XXX
-    /* if (dac.isStreamOpen())
-        dac.closeStream(); */
+    // dac.release(); // XXX
+    if (dac.isStreamOpen())
+        dac.closeStream();
 }
 
 void AudioDestinationLinux::configure()
@@ -95,7 +95,7 @@ void AudioDestinationLinux::stop()
 {
     try
     {
-        // dac->stopStream(); // XXX
+        dac->stopStream();
         m_isPlaying = false;
     }
     catch (RtAudioError & e)

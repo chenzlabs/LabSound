@@ -36,9 +36,9 @@ AudioDestinationWin::AudioDestinationWin(AudioIOCallback & callback, float sampl
 
 AudioDestinationWin::~AudioDestinationWin()
 {
-    dac.release(); // XXX
-    /* if (dac.isStreamOpen())
-        dac.closeStream(); */
+    // dac.release(); // XXX
+    if (dac.isStreamOpen())
+        dac.closeStream();
 }
 
 void AudioDestinationWin::configure()
@@ -95,7 +95,7 @@ void AudioDestinationWin::stop()
 {
     try
     {
-        // dac->stopStream(); // XXX
+        dac->stopStream();
         m_isPlaying = false;
     }
     catch (RtAudioError & e)
