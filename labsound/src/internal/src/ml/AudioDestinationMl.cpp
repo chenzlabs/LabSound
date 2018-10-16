@@ -333,7 +333,7 @@ void AudioDestinationMl::startRecording()
 
     if (result == MLResult_Ok) {
       std::cout << "start recording" << std::endl;
-      
+
       m_isRecording = true;
     } else {
       std::cerr << "failed to start ml input: " << result << std::endl;
