@@ -29,6 +29,7 @@ AudioDestinationLinux::AudioDestinationLinux(AudioIOCallback & callback, float s
 {
     m_sampleRate = sampleRate;
     m_renderBus.setSampleRate(m_sampleRate);
+    m_inputBus.setSampleRate(m_sampleRate);
     dac.reset(new RtAudio()); // XXX
     configure();
 }
