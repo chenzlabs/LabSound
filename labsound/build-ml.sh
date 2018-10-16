@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # pushd ..
 # npm install native-video-deps
 # popd
