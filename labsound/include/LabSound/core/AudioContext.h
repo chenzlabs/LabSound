@@ -100,6 +100,9 @@ public:
     void connectParam(std::shared_ptr<AudioParam> param, std::shared_ptr<AudioNode> driver, uint32_t index);
 
     void holdSourceNodeUntilFinished(std::shared_ptr<AudioScheduledSourceNode> node);
+
+    void suspend();
+    void resume();
     
     // Necessary to call when using an OfflineAudioDestinationNode
     void startRendering();
