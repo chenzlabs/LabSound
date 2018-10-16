@@ -2,6 +2,8 @@
 
 set -e
 
+export MLSDK=${MLSDK:-/mnt/c/Users/avaer/MagicLeap/mlsdk/v0.16.0}
+
 # pushd ..
 # npm install native-video-deps
 # popd
