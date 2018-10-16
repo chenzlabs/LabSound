@@ -330,6 +330,10 @@ void AudioDestinationMl::stop()
     } else {
       std::cerr << "failed to stop ml output sound: " << result << std::endl;
     }
+
+    if (isRecording()) {
+      stopRecording();
+    }
 }
 
 void AudioDestinationMl::startRecording()
