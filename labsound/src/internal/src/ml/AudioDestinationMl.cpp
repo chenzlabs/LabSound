@@ -14,6 +14,7 @@ namespace lab
 
 const float kLowThreshold = -1.0f;
 const float kHighThreshold = 1.0f;
+const uint32_t mlBufferSize = 4096;
 
 void processBuffers(AudioDestinationMl *audioDestination) {
   for (;;) {
@@ -28,6 +29,7 @@ void processBuffers(AudioDestinationMl *audioDestination) {
           std::vector<float> &inputBuffer = audioDestination->inputBuffers.front();
           int totalInputFrames = inputBuffer.size();
           int remainingInputFrames = totalInputFrames - audioDestination->inputIndex;
+
           currentFrames = std::min<int>(currentFrames, remainingInputFrames);
         } else {
           break;
@@ -94,47 +96,55 @@ void processBuffers(AudioDestinationMl *audioDestination) {
 void outputBufferCallback(MLHandle handle, void *callback_context) {
   AudioDestinationMl *audioDestination = (AudioDestinationMl *)callback_context;
 
-  MLAudioBuffer outputMlBuffer;
-  MLResult result = MLAudioGetOutputStreamBuffer(
-    audioDestination->outputHandle,
-    &outputMlBuffer
-  );
-  if (result == MLResult_Ok) {
-    audioDestination->outputMlBuffers.push_back(std::move(outputMlBuffer));
+  {
+    std::lock_guard<std::mutex> lock(audioDestination->mutex);
 
-    processBuffers(audioDestination);
-  } else {
-    std::cerr << "failed to get ml output buffer" << std::endl;
+    MLAudioBuffer outputMlBuffer;
+    MLResult result = MLAudioGetOutputStreamBuffer(
+      audioDestination->outputHandle,
+      &outputMlBuffer
+    );
+    if (result == MLResult_Ok) {
+      audioDestination->outputMlBuffers.push_back(outputMlBuffer);
+
+      processBuffers(audioDestination);
+    } else {
+      std::cerr << "failed to get ml output buffer" << std::endl;
+    }
   }
 }
 
 void inputBufferCallback(MLHandle handle, void *callback_context) {
   AudioDestinationMl *audioDestination = (AudioDestinationMl *)callback_context;
 
-  MLAudioBuffer inputMlBuffer;
-  MLResult result = MLAudioGetInputStreamBuffer(
-    audioDestination->inputHandle,
-    &inputMlBuffer
-  );
-  if (result == MLResult_Ok) {
-    int numRawFrames = inputMlBuffer.size / sizeof(int16_t);
-    int numConvertedFrames = av_rescale_rnd(numRawFrames, audioDestination->outputAudioBufferFormat.samples_per_second, audioDestination->inputAudioBufferFormat.samples_per_second, AV_ROUND_UP);
-    std::vector<float> inputBuffer(numConvertedFrames);
+  {
+    std::lock_guard<std::mutex> lock(audioDestination->mutex);
 
-    uint8_t *dstData[] = {
-      (uint8_t *)inputBuffer.data(),
-    };
-    const uint8_t *srcData[] = {
-      (const uint8_t *)inputMlBuffer.ptr,
-    };
-    swr_convert(audioDestination->input_swr_ctx, dstData, numConvertedFrames, srcData, numRawFrames);
+    MLAudioBuffer inputMlBuffer;
+    MLResult result = MLAudioGetInputStreamBuffer(
+      audioDestination->inputHandle,
+      &inputMlBuffer
+    );
+    if (result == MLResult_Ok) {
+      int numRawFrames = inputMlBuffer.size / sizeof(int16_t);
+      int numConvertedFrames = mlBufferSize;
+      std::vector<float> inputBuffer(numConvertedFrames);
 
-    audioDestination->inputMlBuffers.push_back(std::move(inputMlBuffer));
-    audioDestination->inputBuffers.push_back(std::move(inputBuffer));
+      uint8_t *dstData[] = {
+        (uint8_t *)inputBuffer.data(),
+      };
+      const uint8_t *srcData[] = {
+        (const uint8_t *)inputMlBuffer.ptr,
+      };
+      swr_convert(audioDestination->input_swr_ctx, dstData, numConvertedFrames, srcData, numRawFrames);
 
-    processBuffers(audioDestination);
-  } else {
-    std::cerr << "failed to get ml input buffer" << std::endl;
+      audioDestination->inputMlBuffers.push_back(inputMlBuffer);
+      audioDestination->inputBuffers.push_back(std::move(inputBuffer));
+
+      processBuffers(audioDestination);
+    } else {
+      std::cerr << "failed to get ml input buffer" << std::endl;
+    }
   }
 }
 
@@ -150,22 +160,19 @@ unsigned long AudioDestination::maxChannelCount()
 
 AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleRate) : m_callback(callback)
 {
-    outputAudioBufferFormat.bits_per_sample = 16;
-    outputAudioBufferFormat.channel_count = 2;
-    outputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
-    outputAudioBufferFormat.samples_per_second = (uint32_t)sampleRate;
-    outputAudioBufferFormat.valid_bits_per_sample = 16;
-
-    // uint32_t nOutputBufferFramesPerChannel = AudioNode::ProcessingSizeInFrames;
-    // outputBuffer = std::vector<float>(nOutputBufferFramesPerChannel * 2);
-
     {
-      // std::cout << "ML init output buffer size " << nOutputBufferFramesPerChannel << " " << (nOutputBufferFramesPerChannel * 2 * sizeof(uint16_t)) << std::endl;
+      outputAudioBufferFormat.bits_per_sample = 16;
+      outputAudioBufferFormat.channel_count = 2;
+      outputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
+      outputAudioBufferFormat.samples_per_second = (uint32_t)sampleRate;
+      outputAudioBufferFormat.valid_bits_per_sample = 16;
 
+      uint32_t outputBufferSize = mlBufferSize*2*sizeof(int16_t);
+      
       MLResult result = MLAudioCreateSoundWithOutputStream(
         &outputAudioBufferFormat,
         // nOutputBufferFramesPerChannel * 2 * sizeof(uint16_t),
-        0,
+        outputBufferSize,
         outputBufferCallback,
         this,
         &outputHandle
@@ -175,24 +182,22 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
       }
     }
 
-    inputAudioBufferFormat.bits_per_sample = 16;
-    inputAudioBufferFormat.channel_count = 1;
-    inputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
-    inputAudioBufferFormat.samples_per_second = 16000;
-    inputAudioBufferFormat.valid_bits_per_sample = 16;
-
-    // uint32_t nInputBufferFramesPerChannel = av_rescale_rnd(nOutputBufferFramesPerChannel, inputAudioBufferFormat.samples_per_second, outputAudioBufferFormat.samples_per_second, AV_ROUND_UP);
-    // inputBuffer = std::vector<float>(nOutputBufferFramesPerChannel);
-
     {
-      // std::cout << "ML init input buffer size " << nInputBufferFramesPerChannel << " " << (nInputBufferFramesPerChannel * sizeof(uint16_t)) << std::endl;
+      inputAudioBufferFormat.bits_per_sample = 16;
+      inputAudioBufferFormat.channel_count = 1;
+      inputAudioBufferFormat.sample_format = MLAudioSampleFormat_Int;
+      inputAudioBufferFormat.samples_per_second = 16000;
+      inputAudioBufferFormat.valid_bits_per_sample = 16;
+
+      uint32_t inputBufferSize = (uint32_t)av_rescale_rnd(mlBufferSize*sizeof(int16_t), inputAudioBufferFormat.samples_per_second, outputAudioBufferFormat.samples_per_second, AV_ROUND_UP);
+      inputBufferSize += (sizeof(int16_t) - (inputBufferSize % sizeof(int16_t)));
 
       MLResult result = MLAudioCreateInputFromVoiceComm(
         &inputAudioBufferFormat,
         // nInputBufferFramesPerChannel * sizeof(uint16_t),
-        0,
+        inputBufferSize,
         inputBufferCallback,
-        nullptr,
+        this,
         &inputHandle
       );
       if (result != MLResult_Ok) {
@@ -203,7 +208,6 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
     m_sampleRate = sampleRate;
     m_renderBus.setSampleRate(m_sampleRate);
     m_inputBus.setSampleRate(m_sampleRate);
-    // m_inputBus.setSampleRate((float)inputAudioBufferFormat.samples_per_second);
     // configure();
 
     {
@@ -312,7 +316,7 @@ void AudioDestinationMl::start()
     if (result == MLResult_Ok) {
       m_isPlaying = true;
     } else {
-      std::cerr << "failed to start ml output sound" << std::endl;
+      std::cerr << "failed to start ml output sound: " << result << std::endl;
     }
 }
 
@@ -323,29 +327,31 @@ void AudioDestinationMl::stop()
     if (result == MLResult_Ok) {
       m_isPlaying = false;
     } else {
-      std::cerr << "failed to stop ml output sound" << std::endl;
+      std::cerr << "failed to stop ml output sound: " << result << std::endl;
     }
 }
 
 void AudioDestinationMl::startRecording()
 {
-    MLResult result = MLAudioStartSound(inputHandle);
+    MLResult result = MLAudioStartInput(inputHandle);
 
     if (result == MLResult_Ok) {
+      std::cout << "start recording" << std::endl;
+
       m_isRecording = true;
     } else {
-      std::cerr << "failed to start ml input" << std::endl;
+      std::cerr << "failed to start ml input: " << result << std::endl;
     }
 }
 
 void AudioDestinationMl::stopRecording()
 {
-    MLResult result = MLAudioStopSound(inputHandle);
+    MLResult result = MLAudioStopInput(inputHandle);
 
     if (result == MLResult_Ok) {
       m_isRecording = false;
     } else {
-      std::cerr << "failed to stop ml input" << std::endl;
+      std::cerr << "failed to stop ml input: " << result << std::endl;
     }
 }
 

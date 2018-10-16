@@ -15,6 +15,7 @@ extern "C" {
 }
 #include <iostream>
 #include <deque>
+#include <mutex>
 #include <cstdlib>
 #include <ml_audio.h>
 // #include <ml_logging.h>
@@ -56,6 +57,8 @@ public:
     bool m_isPlaying = false;
     bool m_isRecording = false;
 
+    std::mutex mutex;
+    
     MLHandle outputHandle;
     MLHandle inputHandle;
     MLAudioBufferFormat outputAudioBufferFormat;
