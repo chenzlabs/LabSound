@@ -203,7 +203,6 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
     m_sampleRate = sampleRate;
     m_renderBus.setSampleRate(m_sampleRate);
     m_inputBus.setSampleRate(m_sampleRate);
-    // m_inputBus.setSampleRate((float)inputAudioBufferFormat.samples_per_second);
     // configure();
 
     {
