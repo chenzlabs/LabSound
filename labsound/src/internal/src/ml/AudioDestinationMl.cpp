@@ -14,6 +14,7 @@ namespace lab
 
 const float kLowThreshold = -1.0f;
 const float kHighThreshold = 1.0f;
+const uint32_t mlBufferSize = 4096;
 
 void processBuffers(AudioDestinationMl *audioDestination) {
   for (;;) {
@@ -162,10 +163,12 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
     {
       // std::cout << "ML init output buffer size " << nOutputBufferFramesPerChannel << " " << (nOutputBufferFramesPerChannel * 2 * sizeof(uint16_t)) << std::endl;
 
+      uint32_t outputBufferSize = mlBufferSize*2*sizeof(int16_t);
+      
       MLResult result = MLAudioCreateSoundWithOutputStream(
         &outputAudioBufferFormat,
         // nOutputBufferFramesPerChannel * 2 * sizeof(uint16_t),
-        0,
+        outputBufferSize,
         outputBufferCallback,
         this,
         &outputHandle
@@ -186,11 +189,13 @@ AudioDestinationMl::AudioDestinationMl(AudioIOCallback & callback, float sampleR
 
     {
       // std::cout << "ML init input buffer size " << nInputBufferFramesPerChannel << " " << (nInputBufferFramesPerChannel * sizeof(uint16_t)) << std::endl;
+      uint32_t inputBufferSize = (uint32_t)av_rescale_rnd(mlBufferSize*sizeof(int16_t), inputAudioBufferFormat.samples_per_second, outputAudioBufferFormat.samples_per_second, AV_ROUND_UP);
+      inputBufferSize += (sizeof(int16_t) - (inputBufferSize % sizeof(int16_t)));
 
       MLResult result = MLAudioCreateInputFromVoiceComm(
         &inputAudioBufferFormat,
         // nInputBufferFramesPerChannel * sizeof(uint16_t),
-        0,
+        inputBufferSize,
         inputBufferCallback,
         this,
         &inputHandle
