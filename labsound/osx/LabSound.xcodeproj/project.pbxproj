@@ -2288,6 +2288,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/../include",
 					"$(PROJECT_DIR)/../src",
+					"$(PROJECT_DIR)/../src/internal",
 					"$(PROJECT_DIR)/../third_party",
 					"$(PROJECT_DIR)/../third_party/STK",
 					"$(PROJECT_DIR)/../../node_modules/native-video-deps/include",
@@ -2312,6 +2313,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/../include",
 					"$(PROJECT_DIR)/../src",
+					"$(PROJECT_DIR)/../src/internal",
 					"$(PROJECT_DIR)/../third_party",
 					"$(PROJECT_DIR)/../third_party/STK",
 					"$(PROJECT_DIR)/../../node_modules/native-video-deps/include",
