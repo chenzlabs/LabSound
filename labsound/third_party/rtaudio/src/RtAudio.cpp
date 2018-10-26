@@ -5039,6 +5039,10 @@ void RtApiWasapi::wasapiThread()
       // if the callback input buffer was not pulled from captureBuffer, wait for next capture event
       if ( !callbackPulled ) {
         WaitForSingleObject( captureEvent, INFINITE );
+        
+        if (stream_.state == STREAM_STOPPING) {
+          break;
+        }
       }
 
       // Get capture buffer from stream
@@ -5095,6 +5099,10 @@ void RtApiWasapi::wasapiThread()
       // if the callback output buffer was not pushed to renderBuffer, wait for next render event
       if ( callbackPulled && !callbackPushed ) {
         WaitForSingleObject( renderEvent, INFINITE );
+        
+        if (stream_.state == STREAM_STOPPING) {
+          break;
+        }
       }
 
       // Get render buffer from stream
