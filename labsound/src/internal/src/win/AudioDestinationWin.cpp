@@ -37,8 +37,8 @@ AudioDestinationWin::AudioDestinationWin(AudioIOCallback & callback, float sampl
 AudioDestinationWin::~AudioDestinationWin()
 {
     // dac.release(); // XXX
-    if (dac.isStreamOpen())
-        dac.closeStream();
+    if (dac->isStreamOpen())
+        dac->closeStream();
 }
 
 void AudioDestinationWin::configure()

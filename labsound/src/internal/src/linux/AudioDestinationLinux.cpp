@@ -37,8 +37,8 @@ AudioDestinationLinux::AudioDestinationLinux(AudioIOCallback & callback, float s
 AudioDestinationLinux::~AudioDestinationLinux()
 {
     // dac.release(); // XXX
-    if (dac.isStreamOpen())
-        dac.closeStream();
+    if (dac->isStreamOpen())
+        dac->closeStream();
 }
 
 void AudioDestinationLinux::configure()
