@@ -372,7 +372,7 @@ void AudioDestinationMl::render(int numberOfFrames, void *outputBuffer, void *in
     // Source Bus :: Destination Bus
     m_callback.render(&m_inputBus, &m_renderBus, numberOfFrames);
 
-    // Clamp values at 0d*b (i.e., [-1.0, 1.0])
+    // Clamp values at 0db (i.e., [-1.0, 1.0])
     for (unsigned i = 0; i < m_renderBus.numberOfChannels(); ++i)
     {
         AudioChannel * channel = m_renderBus.channel(i);
