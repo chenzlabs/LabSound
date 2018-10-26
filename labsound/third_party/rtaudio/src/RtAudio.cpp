@@ -4331,9 +4331,20 @@ void RtApiWasapi::stopStream( void )
   // inform stream thread by setting stream state to STREAM_STOPPING
   stream_.state = STREAM_STOPPING;
 
+  HANDLE captureEvent = ( ( WasapiHandle* ) stream_.apiHandle )->captureEvent;
+  SetEvent(captureEvent);
+  
+  HANDLE renderEvent = ( ( WasapiHandle* ) stream_.apiHandle )->renderEvent;
+  SetEvent(renderEvent);
+  
   // wait until stream thread is stopped
   while( stream_.state != STREAM_STOPPED ) {
     Sleep( 1 );
+    
+    DWORD result = WaitForSingleObject( (HANDLE)stream_.callbackInfo.thread, 0);
+    if (result != WAIT_TIMEOUT) {
+      break;
+    }
   }
 
   // Wait for the last buffer to play before stopping.
@@ -4383,10 +4394,21 @@ void RtApiWasapi::abortStream( void )
 
   // inform stream thread by setting stream state to STREAM_STOPPING
   stream_.state = STREAM_STOPPING;
+  
+  HANDLE captureEvent = ( ( WasapiHandle* ) stream_.apiHandle )->captureEvent;
+  SetEvent(captureEvent);
+  
+  HANDLE renderEvent = ( ( WasapiHandle* ) stream_.apiHandle )->renderEvent;
+  SetEvent(renderEvent);
 
   // wait until stream thread is stopped
   while ( stream_.state != STREAM_STOPPED ) {
     Sleep( 1 );
+    
+    DWORD result = WaitForSingleObject( (HANDLE)stream_.callbackInfo.thread, 0);
+    if (result != WAIT_TIMEOUT) {
+      break;
+    }
   }
 
   // stop capture client if applicable
