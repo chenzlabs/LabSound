@@ -129,6 +129,14 @@ void AudioContext::holdSourceNodeUntilFinished(std::shared_ptr<AudioScheduledSou
     automaticSources.push_back(node);
 }
 
+void AudioContext::suspend() {
+  m_destinationNode->suspend();
+}
+
+void AudioContext::resume() {
+  m_destinationNode->resume();
+}
+
 void AudioContext::handleAutomaticSources()
 {
     std::lock_guard<std::mutex> lock(m_updateMutex);

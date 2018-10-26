@@ -4331,9 +4331,20 @@ void RtApiWasapi::stopStream( void )
   // inform stream thread by setting stream state to STREAM_STOPPING
   stream_.state = STREAM_STOPPING;
 
+  HANDLE captureEvent = ( ( WasapiHandle* ) stream_.apiHandle )->captureEvent;
+  SetEvent(captureEvent);
+  
+  HANDLE renderEvent = ( ( WasapiHandle* ) stream_.apiHandle )->renderEvent;
+  SetEvent(renderEvent);
+  
   // wait until stream thread is stopped
   while( stream_.state != STREAM_STOPPED ) {
     Sleep( 1 );
+    
+    DWORD result = WaitForSingleObject( (HANDLE)stream_.callbackInfo.thread, 0);
+    if (result != WAIT_TIMEOUT) {
+      break;
+    }
   }
 
   // Wait for the last buffer to play before stopping.
@@ -4341,29 +4352,29 @@ void RtApiWasapi::stopStream( void )
 
   // stop capture client if applicable
   if ( ( ( WasapiHandle* ) stream_.apiHandle )->captureAudioClient ) {
-    HRESULT hr = ( ( WasapiHandle* ) stream_.apiHandle )->captureAudioClient->Stop();
-    if ( FAILED( hr ) ) {
+    /* HRESULT hr = */( ( WasapiHandle* ) stream_.apiHandle )->captureAudioClient->Stop();
+    /* if ( FAILED( hr ) ) {
       errorText_ = "RtApiWasapi::stopStream: Unable to stop capture stream.";
       error( RtAudioError::DRIVER_ERROR );
       return;
-    }
+    } */
   }
 
   // stop render client if applicable
   if ( ( ( WasapiHandle* ) stream_.apiHandle )->renderAudioClient ) {
-    HRESULT hr = ( ( WasapiHandle* ) stream_.apiHandle )->renderAudioClient->Stop();
-    if ( FAILED( hr ) ) {
+    /* HRESULT hr = */( ( WasapiHandle* ) stream_.apiHandle )->renderAudioClient->Stop();
+    /* if ( FAILED( hr ) ) {
       errorText_ = "RtApiWasapi::stopStream: Unable to stop render stream.";
       error( RtAudioError::DRIVER_ERROR );
       return;
-    }
+    } */
   }
 
   // close thread handle
   if ( stream_.callbackInfo.thread && !CloseHandle( ( void* ) stream_.callbackInfo.thread ) ) {
-    errorText_ = "RtApiWasapi::stopStream: Unable to close callback thread.";
+    /* errorText_ = "RtApiWasapi::stopStream: Unable to close callback thread.";
     error( RtAudioError::THREAD_ERROR );
-    return;
+    return; */
   }
 
   stream_.callbackInfo.thread = (ThreadHandle) NULL;
@@ -4383,10 +4394,21 @@ void RtApiWasapi::abortStream( void )
 
   // inform stream thread by setting stream state to STREAM_STOPPING
   stream_.state = STREAM_STOPPING;
+  
+  HANDLE captureEvent = ( ( WasapiHandle* ) stream_.apiHandle )->captureEvent;
+  SetEvent(captureEvent);
+  
+  HANDLE renderEvent = ( ( WasapiHandle* ) stream_.apiHandle )->renderEvent;
+  SetEvent(renderEvent);
 
   // wait until stream thread is stopped
   while ( stream_.state != STREAM_STOPPED ) {
     Sleep( 1 );
+    
+    DWORD result = WaitForSingleObject( (HANDLE)stream_.callbackInfo.thread, 0);
+    if (result != WAIT_TIMEOUT) {
+      break;
+    }
   }
 
   // stop capture client if applicable
@@ -5017,6 +5039,10 @@ void RtApiWasapi::wasapiThread()
       // if the callback input buffer was not pulled from captureBuffer, wait for next capture event
       if ( !callbackPulled ) {
         WaitForSingleObject( captureEvent, INFINITE );
+        
+        if (stream_.state == STREAM_STOPPING) {
+          break;
+        }
       }
 
       // Get capture buffer from stream
@@ -5073,6 +5099,10 @@ void RtApiWasapi::wasapiThread()
       // if the callback output buffer was not pushed to renderBuffer, wait for next render event
       if ( callbackPulled && !callbackPushed ) {
         WaitForSingleObject( renderEvent, INFINITE );
+        
+        if (stream_.state == STREAM_STOPPING) {
+          break;
+        }
       }
 
       // Get render buffer from stream

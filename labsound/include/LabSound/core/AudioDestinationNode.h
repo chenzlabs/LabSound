@@ -37,6 +37,8 @@ public:
 
     size_t currentSampleFrame() const { return m_currentSampleFrame; }
     double currentTime() const;
+    virtual void suspend() {}
+    virtual void resume() {}
 
     virtual unsigned numberOfChannels() const { return 2; } // FIXME: update when multi-channel (more than stereo) is supported
 
